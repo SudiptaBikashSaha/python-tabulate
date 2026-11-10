@@ -13,7 +13,7 @@ All stages are independent jobs, so every PR gets a result from every stage.
 | S2 | tests | pytest on Python 3.13, no optional libraries ("tests alone") | any test fails |
 | S3 | coverage | pytest without, then with numpy/pandas/wcwidth; coverage combined | a test fails or combined branch coverage < 93% |
 | S4 | matrix | pytest on 3.10 / 3.12 / 3.14, with and without optional libraries | any test fails in any environment |
-| S5 | mutation | mutmut over `tabulate/` | mutation score < `MUTATION_MIN` |
+| S5 | mutation | mutmut over `tabulate/` | mutation score < 80% (baseline 80.61%, 2195/2723 mutants killed) |
 
 The upstream workflows (`lint.yml`, `tabulate.yml`) are kept for comparison but only run manually.
 
@@ -29,12 +29,12 @@ The upstream workflows (`lint.yml`, `tabulate.yml`) are kept for comparison but 
 
 ```bash
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements/ci.txt
+pip install -r requirements/ci.txt                    # test.txt alone is enough for plain pytest
 
 ruff check && ruff format --check                    # S1
 python -m pytest                                      # S2
 pip install -r requirements/extras.txt && python -m pytest   # with optional libraries
-mutmut run && mutmut export-cicd-stats && python scripts/check_mutation.py 0   # S5 (Linux/macOS only)
+mutmut run && mutmut export-cicd-stats && python scripts/check_mutation.py 80  # S5 (Linux/macOS only)
 ```
 
 ## Reproducibility

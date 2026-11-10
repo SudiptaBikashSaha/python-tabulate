@@ -1,0 +1,2 @@
+# Minimal pinned test runner (works on Python 3.10+). Used by S2 tests and S4 matrix.
+pytest==9.2.0

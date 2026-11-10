@@ -1,5 +1,6 @@
 # Pinned tool versions for the CI/CT pipeline (reproducibility).
-pytest==9.2.0
+# coverage 7.17.x needs Python >= 3.11; the S4 matrix uses requirements/test.txt instead.
+-r test.txt
 pytest-cov==7.1.0
 coverage==7.17.2
 ruff==0.15.4

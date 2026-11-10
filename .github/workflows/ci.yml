@@ -22,7 +22,7 @@ env:
   PYTHONHASHSEED: "0"          # deterministic hashing for reproducible runs
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   COVERAGE_MIN: "93"           # combined baseline = 93.05% (core 90%, full 92%)
-  MUTATION_MIN: "0"            # TODO: set to the baseline score after the first clean run
+  MUTATION_MIN: "80"           # baseline = 80.61% (2195/2723 mutants killed, run 42737863828)
 
 jobs:
   lint:
@@ -47,7 +47,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
-      - run: pip install -r requirements/ci.txt
+      - run: pip install -r requirements/test.txt
       - name: pytest
         run: python -m pytest -p no:cacheprovider
 
@@ -77,7 +77,7 @@ jobs:
           echo '```' >> "$GITHUB_STEP_SUMMARY"; cat coverage.txt >> "$GITHUB_STEP_SUMMARY"; echo '```' >> "$GITHUB_STEP_SUMMARY"
           coverage json -o coverage.json
           coverage report --fail-under="$COVERAGE_MIN" > /dev/null
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: coverage
@@ -103,7 +103,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
-      - run: pip install -r requirements/ci.txt
+      - run: pip install -r requirements/test.txt
       - if: matrix.extras == 'full'
         run: pip install -r requirements/extras.txt
       - name: pytest
@@ -126,7 +126,7 @@ jobs:
         run: mutmut export-cicd-stats
       - name: Enforce mutation score
         run: python scripts/check_mutation.py "$MUTATION_MIN"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: mutation-stats
