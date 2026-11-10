@@ -20,3 +20,10 @@ website-build/
 .coverage
 .tox
 /tabulate/_version.py
+
+# CI/CT term project
+mutants/
+.coverage.*
+coverage.xml
+results/raw/
+!/.github/

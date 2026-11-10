@@ -1,8 +1,9 @@
 name: lint
 
+# Upstream workflow kept for comparison. Automatic triggers disabled in this fork
+# so that only the staged ci.yml pipeline runs on pushes/PRs.
 on:
-  - push
-  - pull_request
+  workflow_dispatch:
 
 jobs:
   build:

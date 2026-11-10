@@ -1,0 +1,134 @@
+# Staged CI/CT pipeline for the CIS*4150 term project.
+#
+# Every stage is an independent job (no `needs:`), so each planted-bug PR gets a
+# pass/fail result from EVERY stage. GitHub records each job's duration, which
+# gives the per-stage cost.
+#
+#   S1 lint      ruff check + format check (static)
+#   S2 tests     "tests alone" baseline: one Python, no optional libraries
+#   S3 coverage  core + optional-library runs combined, fail under the 93% baseline
+#   S4 matrix    several Python versions x {no extras, full extras}
+#   S5 mutation  mutmut over tabulate/, fail under the baseline mutation score
+
+name: ci-ct
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  PYTHONHASHSEED: "0"          # deterministic hashing for reproducible runs
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  COVERAGE_MIN: "93"           # combined baseline = 93.05% (core 90%, full 92%)
+  MUTATION_MIN: "0"            # TODO: set to the baseline score after the first clean run
+
+jobs:
+  lint:
+    name: "S1 lint"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements/ci.txt
+      - name: ruff check
+        run: ruff check
+      - name: ruff format --check
+        run: ruff format --check
+
+  tests:
+    name: "S2 tests (py3.13, no extras)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements/ci.txt
+      - name: pytest
+        run: python -m pytest -p no:cacheprovider
+
+  coverage:
+    name: "S3 coverage gate (core + extras)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements/ci.txt
+      - name: Tests without optional libraries
+        env:
+          COVERAGE_FILE: .coverage.core
+        run: python -m pytest -p no:cacheprovider --cov=tabulate --cov-branch --cov-report=
+      - run: pip install -r requirements/extras.txt
+      - name: Tests with optional libraries
+        env:
+          COVERAGE_FILE: .coverage.full
+        run: python -m pytest -p no:cacheprovider --cov=tabulate --cov-branch --cov-report=
+      - name: Combine and enforce threshold
+        run: |
+          coverage combine --keep .coverage.core .coverage.full
+          coverage report --precision=2 | tee coverage.txt
+          echo '### Coverage (core + extras combined)' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"; cat coverage.txt >> "$GITHUB_STEP_SUMMARY"; echo '```' >> "$GITHUB_STEP_SUMMARY"
+          coverage json -o coverage.json
+          coverage report --fail-under="$COVERAGE_MIN" > /dev/null
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: |
+            coverage.txt
+            coverage.json
+
+  matrix:
+    name: "S4 matrix (py${{ matrix.python }}, ${{ matrix.extras }})"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # pinned numpy/pandas need Python >= 3.12, so 3.10 runs without extras
+          - { python: "3.10", extras: "none" }
+          - { python: "3.12", extras: "none" }
+          - { python: "3.12", extras: "full" }
+          - { python: "3.14", extras: "none" }
+          - { python: "3.14", extras: "full" }
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -r requirements/ci.txt
+      - if: matrix.extras == 'full'
+        run: pip install -r requirements/extras.txt
+      - name: pytest
+        run: python -m pytest -p no:cacheprovider
+
+  mutation:
+    name: "S5 mutation (mutmut)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements/ci.txt
+      - name: mutmut run
+        run: mutmut run --max-children 4
+      - name: Export stats
+        if: always()
+        run: mutmut export-cicd-stats
+      - name: Enforce mutation score
+        run: python scripts/check_mutation.py "$MUTATION_MIN"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-stats
+          path: mutants/mutmut-cicd-stats.json
+          if-no-files-found: ignore

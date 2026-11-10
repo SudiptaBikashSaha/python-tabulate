@@ -1,0 +1,5 @@
+# Optional libraries that switch on extra code paths in tabulate.
+# numpy 2.5.x / pandas 3.1.x need Python >= 3.12.
+numpy==2.5.4
+pandas==3.1.1
+wcwidth==0.9.4

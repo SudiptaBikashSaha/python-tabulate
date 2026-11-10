@@ -66,3 +66,8 @@ max-complexity = 22
 combine-as-imports = true
 force-sort-within-sections = true
 known-local-folder = ["common"]
+
+[tool.mutmut]
+paths_to_mutate = ["tabulate/"]
+do_not_mutate = ["tabulate/_version.py", "tabulate/__main__.py"]
+tests_dir = ["test/"]
