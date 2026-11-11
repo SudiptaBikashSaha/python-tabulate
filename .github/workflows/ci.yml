@@ -22,7 +22,7 @@ env:
   PYTHONHASHSEED: "0"          # deterministic hashing for reproducible runs
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   COVERAGE_MIN: "93"           # combined baseline = 93.05% (core 90%, full 92%)
-  MUTATION_MIN: "80"           # baseline = 80.61% (2195/2723 mutants killed, run 42737863828)
+  MUTATION_MIN: "80"           # baseline = 80.61% (2195/2723 mutants killed, run 42967386121)
 
 jobs:
   lint:
